@@ -10,7 +10,7 @@ This repository contains various Bash scripts to help automate and manage Proxmo
 * [create_proxmox_templates.sh](#proxmox-ve-cloud-image-template-creation-script)
 * [destroy_proxmox_guests.sh](#destroy_proxmox_guestssh)
 * [destroy_proxmox_templates.sh](#destroy_proxmox_templatessh)
-* [destroy_VMI.sh](#destroy_vmish---api-based-vm-destruction-script)
+* [destroy_VMI.sh - API-Based VM Destruction Script](#destroy_vmish---api-based-vm-destruction-script)
 * [Brief Guide to Mozilla SOPS](#brief-guide-to-mozilla-sops-secrets-operations)
 * [Accessing and Troubleshooting Proxmox VE VMs via Web Console](#1-accessing-the-vm-via-proxmox-web-console)
 ## Proxmox VE Cloud Image Template Creation Script
@@ -240,6 +240,7 @@ chmod +x destroy_VMI.sh
 
 **Important Notes for `destroy_VMI.sh`:**
 
+* **Proxmox API Documenteation:** Use this URL https://pve.proxmox.com/pve-docs/api-viewer/  
 * **Irreversible Action:** Destroying VMs is an irreversible action. Double-check the VMIDs and ensure you have backups if the data is critical.
 * **API Rate Limiting:** While generally not an issue for a few VMs, excessive API calls could potentially be rate-limited by Proxmox VE, though this script is not designed for massive bulk operations that would typically trigger this.
 * **Network Connectivity:** The machine running the script must have network access to the Proxmox VE API endpoint specified in `PVE_HOST_URL`.
