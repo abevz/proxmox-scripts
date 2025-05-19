@@ -1,15 +1,30 @@
-# Proxmox VE Cloud Image Template Creation Script
+# Proxmox VE Management Scripts
 
-## Overview
+This repository contains various Bash scripts to help automate and manage Proxmox VE environments.
+
+## General Environment Notes
+* Scripts like `create_proxmox_templates.sh`, `destroy_proxmox_guests.sh`, and `destroy_proxmox_templates.sh` are intended to be run directly on the Proxmox VE host, typically requiring `root` or `sudo` privileges.
+* The `destroy_VMI.sh` script interacts with the Proxmox VE API and can be run from any machine with network access to the API. It requires `curl`, `jq`, and `sops` to be installed, but does not necessarily need `root` privileges if the configured API user has sufficient permissions.
+
+# Index
+* [create_proxmox_templates.sh](#proxmox-ve-cloud-image-template-creation-script)
+* [destroy_proxmox_guests.sh](#destroy_proxmox_guestssh)
+* [destroy_proxmox_templates.sh](#destroy_proxmox_templatessh)
+* [destroy_VMI.sh](#destroy_vmish---api-based-vm-destruction-script)
+* [Brief Guide to Mozilla SOPS](#brief-guide-to-mozilla-sops-secrets-operations)
+* [Accessing and Troubleshooting Proxmox VE VMs via Web Console](#1-accessing-the-vm-via-proxmox-web-console)
+## Proxmox VE Cloud Image Template Creation Script
+
+### Overview
 
 This Bash script automates the creation of Proxmox VE virtual machine templates from various Linux cloud images. It downloads specified cloud images, configures them with cloud-init (setting up a user, SSH keys or password, networking, etc.), and then converts the VMs into templates ready for cloning. This allows for rapid deployment of new virtual machines.
 
-## Acknowledgments
+### Acknowledgments
 
 This script was originally based on and inspired by the great work and concepts presented in the article by apalrd: **[Creating Proxmox Cloud-Init Templates](https://www.apalrd.net/posts/2023/pve_cloud/)**.
 This version incorporates several enhancements for robustness, security, and usability.
 
-## Features
+### Features
 
 * Automated download of cloud images from official sources.
 * Creation of Proxmox VE templates using `qm` commands.
@@ -26,7 +41,7 @@ This version incorporates several enhancements for robustness, security, and usa
 * Checks for pre-existing VM IDs to prevent conflicts, skipping those already present.
 * Automatic cleanup of downloaded and processed image files.
 
-## Prerequisites
+### Prerequisites
 
 * A running Proxmox VE host.
 * Bash shell (standard on Proxmox VE).
@@ -36,7 +51,7 @@ This version incorporates several enhancements for robustness, security, and usa
     * `xz` (for decompressing `.xz` archives, if applicable)
 * The script typically needs to be run as `root` or with `sudo` privileges, as `qm` commands require them.
 
-## Configuration
+### Configuration
 
 Before running the script, you **must** review and potentially customize a few settings directly within the script file:
 
@@ -62,7 +77,7 @@ Before running the script, you **must** review and potentially customize a few s
         `"902;tpl-debian-12;debian-12-genericcloud-amd64.qcow2;https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-genericcloud-amd64.qcow2;0"`
     * You can add, remove, or modify entries in this array. **Always verify that the `DOWNLOAD_URL`s are current** by checking the respective distribution's official website, as these links can change, especially for non-LTS or daily builds.
 
-## Usage
+### Usage
 
 1.  **Save the Script:**
     * Copy the script code and save it to a file on your Proxmox VE host (e.g., `create_proxmox_templates.sh`).
@@ -85,7 +100,7 @@ Before running the script, you **must** review and potentially customize a few s
 5.  **Check Proxmox VE:**
     * Once the script completes, you will find the new templates listed in your Proxmox VE web interface (usually with a specific icon indicating they are templates). These are now ready to be cloned into new VMs.
 
-## Important Notes
+### Important Notes
 
 * **Image URLs:** Cloud image URLs, especially for development/testing branches or newer releases, can change frequently. It's highly recommended to verify the URLs in the `images_to_create` array before each run.
 * **VM IDs:** Ensure the `VM_ID`s specified are unique on your Proxmox VE system and are not already in use. The script includes a check and will skip creating templates for existing VM IDs.
@@ -98,6 +113,8 @@ Before running the script, you **must** review and potentially customize a few s
 ## Utility Scripts for Guest and Template Destruction
 
 This repository also includes utility scripts to help manage and remove Proxmox VE guests (VMs/LXCs) and templates. These scripts prompt for VMIDs, confirm the targets, and then attempt to stop (if applicable) and destroy them.
+
+**[⬆ Back to Index](#index)**
 
 ### `destroy_proxmox_guests.sh`
 
@@ -119,6 +136,8 @@ This repository also includes utility scripts to help manage and remove Proxmox 
     sudo ./destroy_proxmox_guests.sh
     ```
     Follow the on-screen prompts.
+
+**[⬆ Back to Index](#index)**
 
 ### `destroy_proxmox_templates.sh`
 
@@ -143,6 +162,205 @@ This repository also includes utility scripts to help manage and remove Proxmox 
 **Important Note for Destruction Scripts:**
 * **Irreversible Action:** Destruction of VMs, LXCs, or templates is irreversible. Ensure you have backups if the data is critical.
 * **Permissions:** These scripts typically require `root` or `sudo` privileges to execute `qm` and `pct` commands for guest management. Alternatively, specific Proxmox VE user permissions can be configured to allow a non-root user to perform these actions.
+
+**[⬆ Back to Index](#index)**
+
+### `destroy_VMI.sh` - API-Based VM Destruction Script
+
+**Purpose:**
+This script provides an interactive way to destroy Proxmox VE Virtual Machines (QEMU VMs) by interacting directly with the Proxmox VE API. It allows for the destruction of multiple VMs, includes pre-checks, user confirmation, and an option to purge disks. Secrets (API credentials, host URL, node name) are managed using Mozilla SOPS.
+
+**Features:**
+* **API Driven:** Interacts directly with the Proxmox VE API using `curl` and `jq`.
+* **Secrets Management:** Securely loads API credentials (`PVE_HOST_URL`, `APINODE`, `USERNAME`, `PASSWORD`) from a `sops`-encrypted file.
+* **Interactive VMID Input:** Prompts the user to enter a space-separated list of VMIDs to target.
+* **VM Validation:**
+    * Checks if entered VMIDs are numeric.
+    * Verifies the existence of each VM by querying its configuration via the API.
+    * Retrieves and displays the name of each valid VM.
+* **Summary & Confirmation:**
+    * Shows a list of VMs (name and ID) that will be destroyed.
+    * Reports any problematic or non-existent VMIDs.
+    * Requires explicit user confirmation (typing "DESTROY") before any destructive action.
+* **Disk Purge Option:** Asks the user if associated virtual disks should be completely purged.
+* **Graceful Shutdown:**
+    * Checks the current status of each VM.
+    * If a VM is running, it attempts a graceful shutdown via an API call.
+    * Waits for the shutdown to complete by polling the VM's status, with a configurable timeout.
+* **Deletion:** Once a VM is confirmed to be stopped, it sends a DELETE request to the API to destroy it.
+* **Reporting:** Provides a summary of successfully destroyed VMs and any VMs that failed to be destroyed or were skipped.
+* **Dependency Checks:** Verifies the presence of `curl`, `jq`, `sops`, and `awk`.
+
+**Prerequisites:**
+
+* Proxmox VE host.
+* Bash shell.
+* Utilities: `curl`, `jq`, `sops`, `awk` installed on the machine where the script is run.
+* A Proxmox VE user account with sufficient permissions to:
+    * Read VM configuration and status.
+    * Shutdown VMs.
+    * Delete VMs (including purging disks if that option is used).
+    * (Typically roles like `PVEVMAdmin` on the target VMs/paths, or a custom role with `VM.Audit`, `VM.PowerMgmt`, `VM.Allocate`, `VM.Config.Disk`).
+
+**Configuration (`userPVE.secrets.env` file):**
+
+This script requires a secrets file (e.g., `userPVE.secrets.env`) located in the directory specified by the `SCRIPTS_HOME` variable within the script. This file must be encrypted with `sops`.
+
+The decrypted content of the secrets file should be in a `KEY=VALUE` format, with each variable on a new line. The keys are parsed case-insensitively by this script.
+
+Example content of the **decrypted** `userPVE.secrets.env` file:
+
+```bash
+PVE_HOST_URL=https://your-proxmox-ip-or-hostname:8006
+APINODE=your-proxmox-node-name
+USERNAME=your-pve-username@pam_or_other_realm
+PASSWORD=your-secret-password
+```
+
+* `PVE_HOST_URL`: The full base URL of your Proxmox VE API (e.g., `https://192.168.1.10:8006`).
+* `APINODE`: The name of the Proxmox VE node where the VMs reside (e.g., `pve`, `homelab`).
+* `USERNAME`: The Proxmox VE username, including the realm (e.g., `apiuser@pve`, `admin@pam`).
+* `PASSWORD`: The password for the specified Proxmox VE user.
+
+**Usage:**
+
+1.  **Prepare Secrets File:** Create your `userPVE.secrets.env` file with the necessary credentials and encrypt it using `sops` (see "Brief Guide to Mozilla SOPS" below). Ensure the encrypted file is named according to the `SECRETS_FILE_NAME` variable in the script (default is `userPVE.secrets.env`).
+2.  **Configure Script:** Ensure the `SCRIPTS_HOME` variable at the top of `destroy_VMI.sh` points to the directory containing your `sops`-encrypted secrets file.
+3.  **Make Executable:**
+```bash
+chmod +x destroy_VMI.sh
+```
+4.  **Run the Script:**
+```bash
+./destroy_VMI.sh
+```
+    The script does not require `sudo` if the Proxmox VE user specified in the secrets file has the necessary API permissions.
+
+5.  **Follow Prompts:** The script will guide you through the process.
+
+**Important Notes for `destroy_VMI.sh`:**
+
+* **Irreversible Action:** Destroying VMs is an irreversible action. Double-check the VMIDs and ensure you have backups if the data is critical.
+* **API Rate Limiting:** While generally not an issue for a few VMs, excessive API calls could potentially be rate-limited by Proxmox VE, though this script is not designed for massive bulk operations that would typically trigger this.
+* **Network Connectivity:** The machine running the script must have network access to the Proxmox VE API endpoint specified in `PVE_HOST_URL`.
+* **SSL Certificates:** The script uses `curl -k` to ignore SSL certificate errors. This is common in homelab environments with self-signed certificates. For production environments, ensure proper certificate validation or remove the `-k` flag if you have valid, trusted certificates.
+* **Testing:** It is **strongly recommended** to test this script on non-critical VMs first to understand its behavior and ensure it works as expected in your environment.
+
+**[⬆ Back to Index](#index)**
+
+### Brief Guide to Mozilla SOPS (Secrets OPerationS)
+
+SOPS is an editor of encrypted files that supports YAML, JSON, ENV, INI, and BINARY formats and encrypts with AWS KMS, GCP KMS, Azure Key Vault, age, and PGP. It's an excellent tool for managing secrets that might be stored in Git repositories or shared securely.
+
+**1. Installation:**
+
+* **Linux (Debian/Ubuntu - may vary):**
+    Check the [Mozilla SOPS GitHub releases page](https://github.com/getsops/sops/releases) for `DEB_PACKAGES` or official distribution packages.
+```bash
+# Example if available in your distribution's repository
+# sudo apt update
+# sudo apt install sops
+```
+* **macOS (using Homebrew):**
+```bash
+brew install sops
+```
+* **From GitHub Releases:** Download the appropriate binary for your system from the [Mozilla SOPS GitHub releases page](https://github.com/getsops/sops/releases) and place it in your `PATH`.
+
+**2. `age` Key Generation (Example Master Key for SOPS):**
+
+SOPS requires a master key for encryption. `age` is a simple, modern encryption tool that's well-supported by SOPS and easy to get started with.
+
+* **Install `age`:**
+    * Linux (Debian/Ubuntu): `sudo apt install age` (or build from source)
+    * macOS (Homebrew): `brew install age`
+* **Generate an `age` keypair:**
+```bash
+age-keygen -o key.txt
+```
+    This command creates a file named `key.txt`. This file contains:
+    * **Public Key:** Starts with `age1...`. This is what you provide to SOPS (or list in `.sops.yaml`) to define who can decrypt the file.
+    * **Private Key:** The secret part. This is what SOPS uses (when available) to actually decrypt the data. **Keep your private key extremely secure!**
+
+    You can view the public key by opening `key.txt` or by extracting it:
+```bash
+cat key.txt | grep publickey | awk '{print $NF}'
+# or if it's the only age1... string:
+# grep -o 'age1[a-z0-9]*' key.txt
+```
+    Store your `age` private key securely. Common locations are `~/.config/sops/age/keys.txt` (one private key per line) or by setting the `SOPS_AGE_KEY` environment variable to the private key string itself.
+
+**3. SOPS Usage Examples (with `age`):**
+
+Let's assume your `age` public key is `age1ql3z7hjy5z0vtv5hrpv3h3x0rgv266jfw550ljxrs6qdrj38k2qshhrk7t` (this is an example public key).
+
+* **Encrypting a new secrets file (`my_secrets.env`):**
+    Suppose `my_secrets.env` contains your sensitive data:
+```bash
+API_TOKEN=verysecrettoken
+DB_PASSWORD=anothersecret
+```
+    To encrypt this file so that only holders of the corresponding `age` private key can decrypt it:
+```bash
+sops --encrypt --age age1ql3z7hjy5z0vtv5hrpv3h3x0rgv266jfw550ljxrs6qdrj38k2qshhrk7t my_secrets.env > my_secrets.sops.env
+```
+    Now, `my_secrets.sops.env` is the encrypted version. You can safely commit this encrypted file to Git.
+
+* **Using a `.sops.yaml` configuration file (Recommended):**
+    Create a file named `.sops.yaml` in the same directory (or a parent directory) as your secrets files:
+```bash
+# .sops.yaml
+creation_rules:
+  - path_regex: .*\.secrets\.env$ # Regex to match your secret files
+    # kms: # Example for AWS KMS (if you were using it)
+    #   - arn: "arn:aws:kms:us-east-1:123456789012:key/your-kms-key-id"
+    age: age1ql3z7hjy5z0vtv5hrpv3h3x0rgv266jfw550ljxrs6qdrj38k2qshhrk7t # Your age public key
+    # pgp: # Example for PGP
+    #   - "YOUR_PGP_FINGERPRINT"
+```
+    With `.sops.yaml` in place, SOPS can automatically determine which key(s) to use for encryption based on the filename:
+```bash
+# Encrypts using rules from .sops.yaml if path_regex matches
+sops --encrypt my_secrets.env > my_secrets.enc.env
+```
+    For the script `destroy_VMI.sh`, if your encrypted file is `userPVE.secrets.env`, your `path_regex` in `.sops.yaml` might be `userPVE\.secrets\.env$`.
+
+* **Editing an encrypted file:**
+    SOPS will decrypt the file to a temporary location, open it in your default editor (`$EDITOR`), and then re-encrypt it when you save and close the editor.
+```bash
+# This requires your age private key to be accessible (e.g., in ~/.config/sops/age/keys.txt or SOPS_AGE_KEY env var)
+sops my_secrets.sops.env
+```
+
+* **Decrypting a file (e.g., for viewing or for scripts like `destroy_VMI.sh`):**
+    The `destroy_VMI.sh` script uses `sops -d <filename>` internally to get the decrypted content.
+    To decrypt and print to standard output:
+```bash
+sops --decrypt my_secrets.sops.env
+```
+    To decrypt and save to a new (unencrypted) file (be careful with unencrypted secrets!):
+```bash
+sops --decrypt my_secrets.sops.env > my_secrets.decrypted.env
+```
+
+**Note on SOPS and the `destroy_VMI.sh` Script:**
+The script expects the `sops`-encrypted file to be named according to the `SECRETS_FILE_NAME` variable (default: `userPVE.secrets.env`) and located in the directory specified by `SCRIPTS_HOME`. When `sops -d` is called by the script, it decrypts the content to standard output, which the script then parses. For this to work, the environment where the script runs must have access to the necessary decryption key (e.g., the `age` private key via `SOPS_AGE_KEY` environment variable or the `~/.config/sops/age/keys.txt` file).
+
+**[⬆ Back to Index](#index)**
+
+### Accessing and Troubleshooting Proxmox VE VMs via Web Console
+
+For detailed steps on accessing the VM console and troubleshooting common login or configuration issues, especially for VMs created from templates, please refer to the dedicated guide:
+[TROUBLESHOOTING_VM_CONSOLE_ACCESS.md](TROUBLESHOOTING_VM_CONSOLE_ACCESS.md)
+
+This guide covers:
+* Accessing the Proxmox VE web console.
+* Logging in with cloud-init credentials.
+* Troubleshooting steps like re-configuring cloud-init, using single-user mode, or booting from a live ISO.
+* Quick tips for SSH issues once console access is gained.
+
+**[⬆ Back to Index](#index)**
+
 
 ## Disclaimer
 
