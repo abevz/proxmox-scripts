@@ -168,7 +168,7 @@ This repository also includes utility scripts to help manage and remove Proxmox 
 ### `destroy_VMI.sh` - API-Based VM Destruction Script
 
 **Purpose:**
-This script provides an interactive way to destroy Proxmox VE Virtual Machines (QEMU VMs) by interacting directly with the Proxmox VE API. It allows for the destruction of multiple VMs, includes pre-checks, user confirmation, and an option to purge disks. Secrets (API credentials, host URL, node name) are managed using Mozilla SOPS.
+This script provides an interactive way to destroy Proxmox VE Virtual Machines (QEMU VMs) by interacting directly with the [Proxmox VE API](https://pve.proxmox.com/pve-docs/api-viewer/). It allows for the destruction of multiple VMs, includes pre-checks, user confirmation, and an option to purge disks. Secrets (API credentials, host URL, node name) are managed using Mozilla SOPS.
 
 **Features:**
 * **API Driven:** Interacts directly with the Proxmox VE API using `curl` and `jq`.
