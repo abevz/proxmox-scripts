@@ -187,7 +187,7 @@ function create_template() {
 }
 
 # --- MAIN SCRIPT BLOCK ---
-# (Остальная часть скрипта (MAIN SCRIPT BLOCK) остается без изменений)
+# (The rest of the script (MAIN SCRIPT BLOCK) remains unchanged)
 
 check_dependencies
 
