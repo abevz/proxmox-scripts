@@ -352,7 +352,7 @@ The script expects the `sops`-encrypted file to be named according to the `SECRE
 ### Accessing and Troubleshooting Proxmox VE VMs via Web Console
 
 For detailed steps on accessing the VM console and troubleshooting common login or configuration issues, especially for VMs created from templates, please refer to the dedicated guide:
-[TROUBLESHOOTING_VM_CONSOLE_ACCESS.md](TROUBLESHOOTING_VM_CONSOLE_ACCESS.md)
+[troubleshooting_vm_console_access.md](troubleshooting_vm_console_access.md)
 
 This guide covers:
 * Accessing the Proxmox VE web console.
